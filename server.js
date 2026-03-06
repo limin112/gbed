@@ -1,15 +1,47 @@
+#!/usr/bin/env node
+
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
+const os = require("node:os");
 const crypto = require("node:crypto");
 const { execFile } = require("node:child_process");
 const Busboy = require("busboy");
 
-const PORT = 52323;
-const HOST = "127.0.0.1";
-const FOLDER_ID = "1SWqsJ0MV9MXU5WkITiZnxoIO69aTjIAR";
-const TMP_DIR = "/tmp/gdrive-upload";
+// --- CLI ---
+
+const args = process.argv.slice(2);
+
+if (args.includes("--help") || args.includes("-h")) {
+  console.log(`Usage: gbed --folder-id <FOLDER_ID> [options]
+
+Options:
+  --folder-id <id>   Google Drive folder ID (or set GDRIVE_FOLDER_ID)
+                     If omitted, auto-creates an "obsidian-images" folder
+  --port <port>      Port to listen on (default: 52323)
+  --host <host>      Host to bind to (default: 127.0.0.1)
+  --help, -h         Show this help message
+
+Example:
+  gbed
+  gbed --folder-id 1SWqsJ0MV9MXU5WkITiZnxoIO69aTjIAR
+  gbed --port 8080`);
+  process.exit(0);
+}
+
+function getArg(name, fallback) {
+  const i = args.indexOf(name);
+  return i !== -1 && i + 1 < args.length ? args[i + 1] : fallback;
+}
+
+let FOLDER_ID = getArg("--folder-id", process.env.GDRIVE_FOLDER_ID);
+const PORT = Number(getArg("--port", process.env.GDRIVE_PORT || "52323"));
+const HOST = getArg("--host", process.env.GDRIVE_HOST || "127.0.0.1");
+const TMP_DIR = path.join(os.tmpdir(), "gdrive-upload");
 const GWS_TIMEOUT = 30000;
+const DEFAULT_FOLDER_NAME = "obsidian-images";
+
+// --- Core ---
 
 fs.mkdirSync(TMP_DIR, { recursive: true });
 
@@ -65,33 +97,23 @@ async function handleUpload(req, res) {
 
     tmpPath = filePath;
 
-    // Upload to Google Drive
     const uploaded = await gws([
-      "drive",
-      "files",
-      "create",
-      "--upload",
-      filePath,
-      "--json",
-      JSON.stringify({ name: fileName, parents: [FOLDER_ID] }),
+      "drive", "files", "create",
+      "--upload", filePath,
+      "--json", JSON.stringify({ name: fileName, parents: [FOLDER_ID] }),
     ]);
 
     const fileId = uploaded.id;
     if (!fileId) throw new Error("No file ID returned from upload");
 
+    await gws([
+      "drive", "permissions", "create",
+      "--params", JSON.stringify({ fileId }),
+      "--json", JSON.stringify({ role: "reader", type: "anyone" }),
+    ]);
+
     const url = `https://lh3.googleusercontent.com/d/${fileId}`;
     console.log(`Uploaded: ${fileName} -> ${url}`);
-
-    // Set public permission (must complete before returning URL)
-    await gws([
-      "drive",
-      "permissions",
-      "create",
-      "--params",
-      JSON.stringify({ fileId }),
-      "--json",
-      JSON.stringify({ role: "reader", type: "anyone" }),
-    ]);
 
     res.writeHead(200, {
       "Content-Type": "application/json",
@@ -112,22 +134,67 @@ async function handleUpload(req, res) {
   }
 }
 
-const server = http.createServer((req, res) => {
-  if (req.method === "OPTIONS") {
-    res.writeHead(204, {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-    });
-    res.end();
-  } else if (req.method === "POST" && req.url === "/upload") {
-    handleUpload(req, res);
-  } else {
-    res.writeHead(404);
-    res.end("Not found");
-  }
-});
+async function findOrCreateFolder() {
+  // Search for existing folder
+  const result = await gws([
+    "drive", "files", "list",
+    "--params", JSON.stringify({
+      q: `name='${DEFAULT_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: "files(id,name)",
+    }),
+  ]);
 
-server.listen(PORT, HOST, () => {
-  console.log(`gdrive-image-server running at http://${HOST}:${PORT}/upload`);
+  if (result.files && result.files.length > 0) {
+    console.log(`Found existing folder: ${DEFAULT_FOLDER_NAME} (${result.files[0].id})`);
+    return result.files[0].id;
+  }
+
+  // Create new folder
+  console.log(`Creating folder: ${DEFAULT_FOLDER_NAME}`);
+  const folder = await gws([
+    "drive", "files", "create",
+    "--json", JSON.stringify({ name: DEFAULT_FOLDER_NAME, mimeType: "application/vnd.google-apps.folder" }),
+  ]);
+
+  // Set public readable
+  await gws([
+    "drive", "permissions", "create",
+    "--params", JSON.stringify({ fileId: folder.id }),
+    "--json", JSON.stringify({ role: "reader", type: "anyone" }),
+  ]);
+
+  console.log(`Created folder: ${DEFAULT_FOLDER_NAME} (${folder.id})`);
+  return folder.id;
+}
+
+async function main() {
+  if (!FOLDER_ID) {
+    FOLDER_ID = await findOrCreateFolder();
+  }
+
+  const server = http.createServer((req, res) => {
+    if (req.method === "OPTIONS") {
+      res.writeHead(204, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+      });
+      res.end();
+    } else if (req.method === "POST" && req.url === "/upload") {
+      handleUpload(req, res);
+    } else {
+      res.writeHead(404);
+      res.end("Not found");
+    }
+  });
+
+  server.listen(PORT, HOST, () => {
+    console.log(`gbed running at http://${HOST}:${PORT}/upload`);
+    console.log(`Uploading to Google Drive folder: ${FOLDER_ID}`);
+  });
+}
+
+main().catch((err) => {
+  console.error("Failed to start:", err.message);
+  process.exit(1);
 });

@@ -1,13 +1,16 @@
 {
-  "name": "gdrive-image-server",
+  "name": "gbed",
   "version": "1.0.0",
   "private": true,
-  "description": "Local proxy server for uploading images to Google Drive via gws",
-  "main": "server.js",
+  "description": "Use Google Drive as your image bed",
+  "license": "MIT",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "busboy": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
