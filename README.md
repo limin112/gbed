@@ -17,7 +17,7 @@ Obsidian (复制/粘贴图片)
 ## 前置要求
 
 - [Node.js](https://nodejs.org/) >= 18
-- 已安装并完成认证 [gws](https://github.com/nicholasgasior/gws) 命令行工具，记得勾选google drive作为资源库
+- 已安装并完成认证 [gws]([https://github.com/nicholasgasior/gws](https://github.com/googleworkspace/cli) 命令行工具，记得勾选google drive作为资源库
 - Obsidian里安装obsidian-image-uploader插件
 
 ## 安装
