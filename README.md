@@ -36,29 +36,35 @@ npm install
 
 ## 使用
 
+### 1. 先前台启动调试
+
 ```bash
-# npm 全局安装后直接运行，首次启动自动在google drive创建 obsidian-images 文件夹
+# npm 全局安装方式
 gbed
-```
 
-或 git clone 方式
-```bash
+# git clone 方式
 node server.js
-
-# 指定已有google drive文件夹
-gbed --folder-id YOUR_FOLDER_ID
-
-
-选项:
-
---folder-id <id>   Google Drive 文件夹 ID（或设置 GDRIVE_FOLDER_ID）
-                   不传则自动创建 obsidian-images
---port <port>      监听端口 (默认: 52323)
---host <host>      绑定地址 (默认: 127.0.0.1)
---help, -h         显示帮助
 ```
 
-## 配置 obsidian-image-uploader 插件
+首次启动会自动在 Google Drive 创建 `obsidian-images` 文件夹。看到以下输出说明启动成功:
+
+```
+Found existing folder: obsidian-images (xxx)
+gbed running at http://127.0.0.1:52323/upload
+```
+
+### 2. 测试上传
+
+新开一个终端窗口:
+
+```bash
+curl -X POST http://127.0.0.1:52323/upload -F "image=@/path/to/test.png"
+# 应返回 {"url":"https://lh3.googleusercontent.com/d/..."}
+```
+
+浏览器打开返回的 URL 确认图片可以访问。
+
+### 3. 配置 obsidian-image-uploader 插件
 
 在 Obsidian 设置 → Image Uploader 中配置:
 
@@ -68,6 +74,29 @@ gbed --folder-id YOUR_FOLDER_ID
 | Upload Header | `{}` |
 | Upload Body | `{"image": "$FILE"}` |
 | Image Url Path | `url` |
+
+在 Obsidian 中粘贴一张图片，确认自动上传成功。
+
+### 4. 调试通过后，改为后台运行
+
+在前台终端按 `Ctrl+C` 停止，然后:
+
+```bash
+gbed -d          # 后台启动
+gbed --stop      # 需要时停止
+```
+
+## 选项
+
+```
+--folder-id <id>   Google Drive 文件夹 ID（或设置 GDRIVE_FOLDER_ID）
+                   不传则自动创建 obsidian-images
+--port <port>      监听端口 (默认: 52323)
+--host <host>      绑定地址 (默认: 127.0.0.1)
+--daemon, -d       后台运行
+--stop             停止后台进程
+--help, -h         显示帮助
+```
 
 ## (可选) macOS 开机自启
 
@@ -102,11 +131,16 @@ gbed --folder-id YOUR_FOLDER_ID
 launchctl load ~/Library/LaunchAgents/com.gbed.plist
 ```
 
-## 测试
+## 更新
 
 ```bash
-curl -X POST http://127.0.0.1:52323/upload -F "image=@/path/to/test.png"
-# {"url":"https://lh3.googleusercontent.com/d/..."}
+# npm 方式
+npm update -g @minlibuilds/gbed
+
+# git clone 方式
+cd gbed
+git pull
+npm install
 ```
 
 ## 许可协议
