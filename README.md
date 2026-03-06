@@ -39,32 +39,23 @@ npm install
 ```bash
 # npm 全局安装后直接运行，首次启动自动在google drive创建 obsidian-images 文件夹
 gbed
+```
 
-# 或 git clone 方式
+或 git clone 方式
+```bash
 node server.js
 
 # 指定已有google drive文件夹
 gbed --folder-id YOUR_FOLDER_ID
-```
+
 
 选项:
 
-```
 --folder-id <id>   Google Drive 文件夹 ID（或设置 GDRIVE_FOLDER_ID）
                    不传则自动创建 obsidian-images
 --port <port>      监听端口 (默认: 52323)
 --host <host>      绑定地址 (默认: 127.0.0.1)
 --help, -h         显示帮助
-```
-
-也支持环境变量 `GDRIVE_FOLDER_ID`、`GDRIVE_PORT`、`GDRIVE_HOST`。
-
-## 更新
-
-```bash
-cd gbed
-git pull
-npm install
 ```
 
 ## 配置 obsidian-image-uploader 插件
