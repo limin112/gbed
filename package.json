@@ -1,9 +1,18 @@
 {
   "name": "gbed",
   "version": "1.0.0",
-  "private": true,
-  "description": "Use Google Drive as your image bed",
+  "description": "Use Google Drive as your image bed | 用 Google Drive 当图床",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/limin112/gbed.git"
+  },
+  "bin": {
+    "gbed": "server.js"
+  },
+  "files": [
+    "server.js"
+  ],
   "scripts": {
     "start": "node server.js"
   },

@@ -23,6 +23,12 @@ Obsidian (复制/粘贴图片)
 ## 安装
 
 ```bash
+npm install -g gbed
+```
+
+或者用 git clone:
+
+```bash
 git clone https://github.com/limin112/gbed.git
 cd gbed
 npm install
@@ -31,11 +37,14 @@ npm install
 ## 使用
 
 ```bash
-# 直接运行，首次启动自动在google drive创建 obsidian-images 文件夹
+# npm 全局安装后直接运行，首次启动自动在google drive创建 obsidian-images 文件夹
+gbed
+
+# 或 git clone 方式
 node server.js
 
-# 或指定已有google drive文件夹
-node server.js --folder-id YOUR_FOLDER_ID
+# 指定已有google drive文件夹
+gbed --folder-id YOUR_FOLDER_ID
 ```
 
 选项:
