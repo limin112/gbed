@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 const crypto = require("node:crypto");
-const { execFile } = require("node:child_process");
+const { execFile, spawn } = require("node:child_process");
 const Busboy = require("busboy");
 
 // --- CLI ---
@@ -13,19 +13,48 @@ const Busboy = require("busboy");
 const args = process.argv.slice(2);
 
 if (args.includes("--help") || args.includes("-h")) {
-  console.log(`Usage: gbed --folder-id <FOLDER_ID> [options]
+  console.log(`Usage: gbed [options]
 
 Options:
   --folder-id <id>   Google Drive folder ID (or set GDRIVE_FOLDER_ID)
                      If omitted, auto-creates an "obsidian-images" folder
   --port <port>      Port to listen on (default: 52323)
   --host <host>      Host to bind to (default: 127.0.0.1)
+  --daemon, -d       Run in background
+  --stop             Stop the background process
   --help, -h         Show this help message
 
 Example:
   gbed
-  gbed --folder-id 1SWqsJ0MV9MXU5WkITiZnxoIO69aTjIAR
-  gbed --port 8080`);
+  gbed -d
+  gbed --stop
+  gbed --folder-id 1SWqsJ0MV9MXU5WkITiZnxoIO69aTjIAR`);
+  process.exit(0);
+}
+
+const PID_FILE = path.join(os.tmpdir(), "gbed.pid");
+
+if (args.includes("--stop")) {
+  try {
+    const pid = Number(fs.readFileSync(PID_FILE, "utf8"));
+    process.kill(pid);
+    fs.unlinkSync(PID_FILE);
+    console.log(`gbed stopped (pid ${pid})`);
+  } catch {
+    console.log("gbed is not running");
+  }
+  process.exit(0);
+}
+
+if (args.includes("--daemon") || args.includes("-d")) {
+  const filteredArgs = args.filter((a) => a !== "--daemon" && a !== "-d");
+  const child = spawn(process.execPath, [__filename, ...filteredArgs], {
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
+  fs.writeFileSync(PID_FILE, String(child.pid));
+  console.log(`gbed started in background (pid ${child.pid})`);
   process.exit(0);
 }
 
@@ -189,6 +218,7 @@ async function main() {
   });
 
   server.listen(PORT, HOST, () => {
+    fs.writeFileSync(PID_FILE, String(process.pid));
     console.log(`gbed running at http://${HOST}:${PORT}/upload`);
     console.log(`Uploading to Google Drive folder: ${FOLDER_ID}`);
   });
