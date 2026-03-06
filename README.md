@@ -23,7 +23,7 @@ Obsidian (复制/粘贴图片)
 ## 安装
 
 ```bash
-npm install -g gbed
+npm install -g @minlibuilds/gbed
 ```
 
 或者用 git clone:
